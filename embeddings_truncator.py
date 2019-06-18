@@ -8,6 +8,8 @@ TRUNCATED_EMBEDDINGS_FILE = "embeddings.txt"  # updated file with only encodings
 dictionary = []
 orig_embeddings_f = open(ORIGINAL_EMBEDDINGS_FILE, "r")
 
+print "encoding embeddings"
+
 while True:
     # if only python had do while loops... sigh
 
@@ -36,19 +38,29 @@ trunc_dictionary = []
 top_words_f = open(TOP_WORDS_FILE, "r")
 next_line = "a"
 
+print "truncating embeddings"
+i = 0
+
 while next_line != "":
     # if only python had do while loops... sigh
 
     next_line = top_words_f.readline()
 
-    for i in range(len(dictionary)):
-        if dictionary[i]["word"] == next_line:
-            trunc_dictionary.append(dictionary.pop(i))
+    for j in range(len(dictionary)):
+        if dictionary[j]["word"] == next_line.rstrip("\n"):
+            trunc_dictionary.append(dictionary.pop(j))
             break
+
+    if i % 100 == 0:
+        print i
+
+    i += 1
 
 top_words_f.close()
 
 # third, write our truncated dictionary to a truncated embeddings file
+
+print "saving embeddings"
 
 trunc_embeddings_f = open(TRUNCATED_EMBEDDINGS_FILE, "w")
 
@@ -58,6 +70,8 @@ for encoding in trunc_dictionary:
     for index in encoding["embedding"]:
         save_str += " " + str(index)
 
-    trunc_embeddings_f.write(save_str)
+    trunc_embeddings_f.write(save_str + "\n")
 
 trunc_embeddings_f.close()
+
+print "embeddings saved"

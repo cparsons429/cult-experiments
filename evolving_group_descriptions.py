@@ -5,6 +5,7 @@ import time
 DESCRIPTION_LEN = 10  # number of words in a description
 NUM_CLOSE_WORDS = 10  # number of "closest words" to find for each word in a description
 POWER_LAW_CONST = 5  # used for calculating the new word to which a given word in a description will mutate
+ZIPF_LAW_CONST = 1.01  # used to begin with initial words that are more frequently used, just needs to be close to 1
 NUM_MUTANTS = 5  # number of mutated descriptions to be shown at each step of evolution
 EMBEDDINGS_FILE = "embeddings.txt"  # file with pre-trained word embeddings
 SAVED_DESCRIPTIONS_FILE = "savedDescriptions.txt"  # file with the descriptions that users have saved
@@ -41,7 +42,13 @@ def generate_first_descriptions(dictionary):
 
         # randomly appending words from the dictionary
         for j in range(DESCRIPTION_LEN):
-            first_desc.append(dictionary[int(rnd.uniform(0, len(dictionary)))])
+            zipf_val = rnd.zipf(ZIPF_LAW_CONST)
+
+            while zipf_val > len(dictionary):
+                # just in case our zipf value is absurdly big
+                zipf_val = rnd.zipf(ZIPF_LAW_CONST)
+
+            first_desc.append(dictionary[int(zipf_val) - 1])
 
         first_descriptions.append(first_desc)
 

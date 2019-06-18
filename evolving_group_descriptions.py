@@ -2,10 +2,10 @@ import numpy.random as rnd
 import time
 
 
-DESCRIPTION_LEN = 15  # number of words in a description
+DESCRIPTION_LEN = 10  # number of words in a description
 NUM_CLOSE_WORDS = 10  # number of "closest words" to find for each word in a description
 POWER_LAW_CONST = 5  # used for calculating the new word to which a given word in a description will mutate
-NUM_MUTANTS = 10  # number of mutated descriptions to be shown at each step of evolution
+NUM_MUTANTS = 5  # number of mutated descriptions to be shown at each step of evolution
 EMBEDDINGS_FILE = "embeddings.txt"  # file with pre-trained word embeddings
 SAVED_DESCRIPTIONS_FILE = "savedDescriptions.txt"  # file with the descriptions that users have saved
 
@@ -111,7 +111,7 @@ def mutate_description(dictionary, description):
                 pos = binary_search(distances[i], [close_word["distance"] for close_word in closest_words[i]])
 
                 # slide over all following "close words"
-                for j in range(NUM_CLOSE_WORDS, pos, -1):
+                for j in range(NUM_CLOSE_WORDS - 1, pos, -1):
                     closest_words[i][j] = closest_words[i][j - 1]
 
                 # insert this "close word"
@@ -148,7 +148,6 @@ print "opening embeddings files"
 
 dictionary = []
 embeddings_f = open(EMBEDDINGS_FILE, "r")
-saved_descriptions_f = open(SAVED_DESCRIPTIONS_FILE, "rw")
 
 print "encoding embeddings"
 
@@ -171,6 +170,8 @@ while True:
         encoding["embedding"].append(float(val))
 
     dictionary.append(encoding)
+
+embeddings_f.close()
 
 print "beginning program\n"
 
@@ -202,13 +203,19 @@ while True:
         break
     elif beginning_descs == "b" or beginning_descs == "B":
         print "\nloading saved phrases"
+
+        saved_descriptions_f = open(SAVED_DESCRIPTIONS_FILE, "r")
         descriptions = get_first_descriptions(dictionary)  # this could take a little bit, so we warn user about delay
+        saved_descriptions_f.close()
+
         print "ready to play!\n"
+
         break
     else:
         beginning_descs = raw_input("invalid input! please type \"a\" or \"b\": ")
 
 still_playing = True
+saved_descriptions_f = open(SAVED_DESCRIPTIONS_FILE, "w")
 
 # we only break out when the user indicates they want to exit
 while still_playing:
@@ -218,7 +225,7 @@ while still_playing:
     for i in range(NUM_MUTANTS):
         description_str = str(i) + ": "
 
-        for encoding in descriptions:
+        for encoding in descriptions[i]:
             description_str += encoding["word"] + " "
 
         print description_str
@@ -247,7 +254,7 @@ while still_playing:
 
                 # if input could be converted to an int, and the int is in the correct range, we're good to go
                 if -1 < chosen_desc < NUM_MUTANTS:
-                    print
+                    print "\nevolving phrases"
 
                     # if the user wants us to save this description, write it with the following format:
                     # unix timestamp, description
@@ -260,10 +267,16 @@ while still_playing:
                         save_str.rstrip()  # trim trailing space
                         saved_descriptions_f.write(save_str)
 
+                    descriptions = mutate_description(dictionary, descriptions[chosen_desc])
+
+                    print "phrases evolved\n"
                     break
+                else:
+                    next_desc = raw_input("invalid response - please write a number from 0 to " + str(NUM_MUTANTS - 1) +
+                                          ", with a \"*\" before the number if you want to save that phrase: ")
             except:
                 next_desc = raw_input("invalid response - please write a number from 0 to " + str(NUM_MUTANTS - 1) +
                                       ", with a \"*\" before the number if you want to save that phrase: ")
 
-
-print "thanks for playing :)"
+saved_descriptions_f.close()
+print "\nthanks for playing :)"

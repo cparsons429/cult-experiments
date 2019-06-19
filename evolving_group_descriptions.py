@@ -1,5 +1,6 @@
 import numpy.random as rnd
 import time
+import threading
 
 
 DESCRIPTION_LEN = 10  # number of words in a description
@@ -9,6 +10,9 @@ ZIPF_LAW_CONST = 1.01  # used to begin with initial words that are more frequent
 NUM_MUTANTS = 5  # number of mutated descriptions to be shown at each step of evolution
 EMBEDDINGS_FILE = "embeddings.txt"  # file with pre-trained word embeddings
 SAVED_DESCRIPTIONS_FILE = "savedDescriptions.txt"  # file with the descriptions that users have saved
+
+
+potential_next_descriptions = [[] for i in range(NUM_MUTANTS)]  # used to preload next descriptions
 
 
 def dist_sqr(embedding0, embedding1):
@@ -151,139 +155,154 @@ def mutate_description(dictionary, description):
 
     return mutated_descriptions
 
-print "opening embeddings files"
 
-dictionary = []
-embeddings_f = open(EMBEDDINGS_FILE, "r")
-
-print "encoding embeddings"
-
-while True:
-    # if only python had do while loops... sigh
-
-    next_line = embeddings_f.readline()
-    vals = next_line.split()
-
-    try:
-        encoding = {
-            "word": vals.pop(0),
-            "embedding": []
-        }
-    except:
-        # if that fails, we've reached EOF
-        break
-
-    for val in vals:
-        encoding["embedding"].append(float(val))
-
-    dictionary.append(encoding)
-
-embeddings_f.close()
-
-print "beginning program\n"
-
-print "welcome to \"evolving phrases\"!"
-print "to play, a set of phrases will appear, with numbers next to them"
-print "choose the most interesting phrase, type its number, and press enter\n"
-
-print "then, a *new* set of phrases will evolve from the phrase you just chose"
-print "repeat the same thing - pick the most interesting phrase, and keep on going!"
-print "when you're bored and want to exit, just type \"x\", and press enter\n"
-
-print "and one last thing!"
-print "if you have a particularly interesting phrase appear, type a star before typing its number"
-print "like \"*6\""
-print "that phrase will then be saved for future players!\n"
-
-print "let's begin..."
-
-beginning_descs = raw_input("\ntype \"a\" and press enter if you want to start with randomly generated phrases, " +
-                            "or type \"b\" and press enter if you want to start with other players' saved phrases: ")
-
-# we only break out when we have a valid answer to the previous question
-while True:
-    beginning_descs.strip("\"")
-
-    if beginning_descs == "a" or beginning_descs == "A":
-        descriptions = generate_first_descriptions(dictionary)
-        print
-        break
-    elif beginning_descs == "b" or beginning_descs == "B":
-        print "\nloading saved phrases"
-
-        saved_descriptions_f = open(SAVED_DESCRIPTIONS_FILE, "r")
-        descriptions = get_first_descriptions(dictionary)  # this could take a little bit, so we warn user about delay
-        saved_descriptions_f.close()
-
-        print "ready to play!\n"
-
-        break
-    else:
-        beginning_descs = raw_input("invalid input! please type \"a\" or \"b\": ")
-
-still_playing = True
-saved_descriptions_f = open(SAVED_DESCRIPTIONS_FILE, "w")
-
-# we only break out when the user indicates they want to exit
-while still_playing:
-    save = False
-
-    # printing out the descriptions
+def mutate_all_descriptions(dictionary, descriptions):
+    # create mutants of all descriptions
     for i in range(NUM_MUTANTS):
-        description_str = str(i) + ": "
+        potential_next_descriptions[i] = mutate_description(dictionary, descriptions[i])
 
-        for encoding in descriptions[i]:
-            description_str += encoding["word"] + " "
 
-        print description_str
+if __name__ == "__main__":
+    dictionary = []
+    embeddings_f = open(EMBEDDINGS_FILE, "r")
 
-    next_desc = raw_input("\nmost interesting phrase: ")
+    while True:
+        # if only python had do while loops... sigh
+
+        next_line = embeddings_f.readline()
+        vals = next_line.split()
+
+        try:
+            encoding = {
+                "word": vals.pop(0),
+                "embedding": []
+            }
+        except:
+            # if that fails, we've reached EOF
+            break
+
+        for val in vals:
+            encoding["embedding"].append(float(val))
+
+        dictionary.append(encoding)
+
+    embeddings_f.close()
+
+    print "\nwelcome to \"evolving phrases\"!"
+    print "to play, a set of phrases will appear, with numbers next to them"
+    print "choose the most interesting phrase, type its number, and press enter\n"
+
+    time.sleep(7)
+
+    print "then, a *new* set of phrases will evolve from the phrase you just chose"
+    print "repeat the same thing - pick the most interesting phrase, and keep on going!"
+    print "when you're bored and want to exit, just type \"x\", and press enter\n"
+
+    time.sleep(7)
+
+    print "and one last thing!"
+    print "if you have a particularly interesting phrase appear, type a star before typing its number"
+    print "like \"*2\""
+    print "that phrase will then be saved for future players!\n"
+
+    time.sleep(7)
+
+    print "let's begin..."
+
+    time.sleep(2)
+
+    beginning_descs = raw_input("\ntype \"a\" and press enter if you want to start with randomly generated phrases, " +
+                            "or type \"b\" and press enter if you want to start with other players' saved phrases: ")
 
     # we only break out when we have a valid answer to the previous question
     while True:
-        next_desc.strip("\"")
+        beginning_descs.strip("\"")
 
-        if next_desc == "x" or next_desc == "X":
-            still_playing = False
+        if beginning_descs == "a" or beginning_descs == "A":
+            descriptions = generate_first_descriptions(dictionary)
+            print
+            break
+        elif beginning_descs == "b" or beginning_descs == "B":
+            print "\nloading saved phrases"
+
+            saved_descriptions_f = open(SAVED_DESCRIPTIONS_FILE, "r")
+            descriptions = get_first_descriptions(dictionary)  # this could take a little bit, so we warn user about delay
+            saved_descriptions_f.close()
+
+            print "ready to play!\n"
+
             break
         else:
-            # we begin by noting whether the user wants to save this description
-            # note that if they input something invalid, if
-            # (a) the first element is a star, trimming it won't make the whole thing valid and
-            # (b) if the first element isn't a star, trimming the first element will still keep the whole thing invalid
-            if "*" in next_desc:
-                next_desc = next_desc[1:]
-                save = True
+            beginning_descs = raw_input("invalid input! please type \"a\" or \"b\": ")
 
-            # now to see if they input something valid
-            try:
-                chosen_desc = int(next_desc)
+    still_playing = True
+    saved_descriptions_f = open(SAVED_DESCRIPTIONS_FILE, "a")
 
-                # if input could be converted to an int, and the int is in the correct range, we're good to go
-                if -1 < chosen_desc < NUM_MUTANTS:
-                    print "\nevolving phrases"
+    # we only break out when the user indicates they want to exit
+    while still_playing:
+        # preload new descriptions behind the scenes, so that the experience feels fast to the user
+        descriptions_load = threading.Thread(target=mutate_all_descriptions, args=(dictionary, descriptions))
+        descriptions_load.start()
 
-                    # if the user wants us to save this description, write it with the following format:
-                    # unix timestamp, description
-                    if save:
-                        save_str = str(time.time()) + ", "
+        save = False
 
-                        for encoding in descriptions[chosen_desc]:
-                            save_str += encoding["word"] + " "
+        # printing out the descriptions
+        for i in range(NUM_MUTANTS):
+            description_str = str(i) + ": "
 
-                        save_str.rstrip()  # trim trailing space
-                        saved_descriptions_f.write(save_str)
+            for encoding in descriptions[i]:
+                description_str += encoding["word"] + " "
 
-                    descriptions = mutate_description(dictionary, descriptions[chosen_desc])
+            print description_str
 
-                    print "phrases evolved\n"
-                    break
-                else:
-                    next_desc = raw_input("invalid response - please write a number from 0 to " + str(NUM_MUTANTS - 1) +
+        next_desc = raw_input("\nmost interesting phrase: ")
+
+        # we only break out when we have a valid answer to the previous question
+        while True:
+            next_desc.strip("\"")
+
+            if next_desc == "x" or next_desc == "X":
+                still_playing = False
+                break
+            else:
+                # we begin by noting whether the user wants to save this description
+                # note that if they input something invalid, if
+                # (a) first element is a star, trimming it won't make the whole thing valid and
+                # (b) first element isn't a star, trimming the first element will still keep the whole thing invalid
+                if "*" in next_desc:
+                    next_desc = next_desc[1:]
+                    save = True
+
+                # now to see if they input something valid
+                try:
+                    chosen_desc = int(next_desc)
+
+                    # if input could be converted to an int, and the int is in the correct range, we're good to go
+                    if -1 < chosen_desc < NUM_MUTANTS:
+                        # if the user wants us to save this description, write it with the following format:
+                        # unix timestamp, description
+                        if save:
+                            save_str = str(time.time()) + ", "
+
+                            for encoding in descriptions[chosen_desc]:
+                                save_str += encoding["word"] + " "
+
+                            save_str.rstrip()  # trim trailing space
+                            saved_descriptions_f.write(save_str + "\n")
+
+                        descriptions_load.join()
+                        descriptions = potential_next_descriptions[chosen_desc]
+
+                        print
+                        break
+                    else:
+                        next_desc = raw_input("invalid response - please write a number from 0 to " +
+                                              str(NUM_MUTANTS - 1) +
+                                              ", with a \"*\" before the number if you want to save that phrase: ")
+                except:
+                    next_desc = raw_input("invalid response - please write a number from 0 to " +
+                                          str(NUM_MUTANTS - 1) +
                                           ", with a \"*\" before the number if you want to save that phrase: ")
-            except:
-                next_desc = raw_input("invalid response - please write a number from 0 to " + str(NUM_MUTANTS - 1) +
-                                      ", with a \"*\" before the number if you want to save that phrase: ")
 
-saved_descriptions_f.close()
-print "\nthanks for playing :)"
+    saved_descriptions_f.close()
+    print "\nthanks for playing :)"
